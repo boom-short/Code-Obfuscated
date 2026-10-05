@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HTML / JavaScript Obfuscator</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080d19;color:#eef3ff;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+.wrap{max-width:900px;margin:auto;padding:18px}.hero{text-align:center;padding:18px 0}.hero h1{margin:8px 0;font-size:clamp(28px,7vw,44px)}.hero p{color:#9aa9c7}
+.card{background:#111a2c;border:1px solid #293858;border-radius:20px;padding:18px;box-shadow:0 20px 60px #0008}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.tab,.btn{border:0;border-radius:12px;padding:13px;font-weight:800;cursor:pointer}.tab{background:#18233b;color:#9fb0d0}.tab.active{background:#5668ff;color:white}
+label{display:block;margin:13px 0 7px;font-size:13px;font-weight:800;color:#b9c7e4}
+textarea,input{width:100%;background:#080f1e;color:#e6edff;border:1px solid #30405f;border-radius:12px;padding:12px;outline:none}textarea{min-height:290px;resize:vertical;font:13px/1.55 ui-monospace,monospace}input:focus,textarea:focus{border-color:#6878ff}
+.drop{border:1px dashed #4a5d87;border-radius:15px;padding:20px;text-align:center;cursor:pointer;background:#0b1324;margin-bottom:10px}.drop strong{display:block}.drop small{color:#8798ba}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.btn{background:#263453;color:white}.primary{background:linear-gradient(135deg,#596cff,#885cff)}.success{background:#159d78}.danger{background:#49222f}
+.status{margin-top:12px;padding:10px;border-radius:10px;background:#0b1425;color:#a9b8d5;font-size:12px}.hidden{display:none!important}.muted{color:#8394b7;font-size:11px;line-height:1.5;margin-top:8px}
+@media(max-width:600px){.wrap{padding:10px}.grid,.actions{grid-template-columns:1fr}textarea{min-height:250px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<div>🛡️ HTML • CSS • JAVASCRIPT</div>
+<h1>Obfuscator Pro</h1>
+<p>Upload, obfuscate, download — অথবা সরাসরি code paste করুন।</p>
+</header>
+
+<div class="card">
+<div class="tabs">
+<button class="tab active" id="tabOb">OBFUSCATE</button>
+<button class="tab" id="tabRestore">RESTORE</button>
+</div>
+
+<section id="obPanel">
+<div class="drop" id="uploadBox">
+<strong>📤 HTML / HTM Upload</strong>
+<small>ফাইল নির্বাচন করতে এখানে চাপুন</small>
+<input id="fileInput" type="file" accept=".html,.htm" hidden>
+</div>
+<div id="fileName" class="muted"></div>
+
+<label for="javascriptCode">HTML / JavaScript Code</label>
+<textarea id="javascriptCode" placeholder="এখানে HTML অথবা JavaScript code দিন..."></textarea>
+
+<div class="grid">
+<div><label for="lockDomains">Lock Domains</label><input id="lockDomains" placeholder="example.com,site.com"></div>
+<div><label for="ownerMessage">Protection Message</label><input id="ownerMessage" value="আমার কোড চুরি করা অসম্ভব"></div>
+</div>
+
+<div class="actions">
+<button class="btn primary" id="obfuscateBtn">⚡ Obfuscate</button>
+<button class="btn danger" id="clearBtn">Clear</button>
+</div>
+
+<div id="obStatus" class="status hidden"></div>
+
+<div id="resultBox" class="hidden">
+<label for="output">Obfuscated Output</label>
+<textarea id="output" readonly></textarea>
+<div class="actions">
+<button class="btn success" id="downloadBtn">⬇ Download Obfuscated File</button>
+<button class="btn" id="copyBtn">📋 Copy Output</button>
+</div>
+</div>
+</section>
+
+<section id="restorePanel" class="hidden">
+<div class="drop" id="restoreUpload">
+<strong>📥 Obfuscated HTML Upload</strong>
+<small>এই টুলের তৈরি file restore করার জন্য</small>
+<input id="restoreFile" type="file" accept=".html,.htm" hidden>
+</div>
+<label for="restoreInput">Obfuscated Code</label>
+<textarea id="restoreInput" placeholder="Obfuscated HTML এখানে দিন..."></textarea>
+<label for="restorePassword">Restore Password</label>
+<input id="restorePassword" type="password" placeholder="Password">
+<div class="actions">
+<button class="btn primary" id="restoreBtn">↩ Restore</button>
+<button class="btn danger" id="restoreClear">Clear</button>
+</div>
+<div id="restoreStatus" class="status hidden"></div>
+<div id="restoreBox" class="hidden">
+<label for="restoredOutput">Restored Output</label>
+<textarea id="restoredOutput" readonly></textarea>
+<button class="btn success" id="downloadRestored" style="width:100%;margin-top:10px">⬇ Download Restored HTML</button>
+</div>
+</section>
+
+<div class="muted">নোট: JavaScript Obfuscator library browser-এ CDN থেকে লোড হয়। ইন্টারনেট না থাকলে obfuscation চলবে না।</div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/javascript-obfuscator@4.1.1/dist/index.browser.js"></script>
+<script>
+'use strict';
+
+let javascriptCode = document.getElementById("javascriptCode");
+let lockDomains = document.getElementById("lockDomains");
+let output = document.getElementById("output");
+
+function showStatus(id,msg,error=false){
+  const el=document.getElementById(id);
+  el.textContent=msg;
+  el.classList.remove("hidden");
+  el.style.color=error?"#ff9eae":"#9ff1d2";
+}
+
+function getDomains(){
+  return lockDomains.value.split(",").map(d=>d.trim()).filter(Boolean);
+}
+
+/* আপনার দেওয়া মূল JavaScript obfuscation function */
+function obfuscateJavaScript(code){
+  if(typeof JavaScriptObfuscator==="undefined"){
+    throw new Error("JavaScriptObfuscator library load হয়নি। Internet connection/check CDN করুন।");
+  }
+
+  let domainLockArray = getDomains();
+
+  let obfuscationResult = JavaScriptObfuscator.obfuscate(code,{
+    compact:true,
+    controlFlowFlattening:true,
+    controlFlowFlatteningThreshold:1,
+    deadCodeInjection:true,
+    deadCodeInjectionThreshold:0.4,
+    debugProtection:true,
+    debugProtectionInterval:4000,
+    disableConsoleOutput:true,
+    identifierNamesGenerator:'hexadecimal',
+    log:false,
+    numbersToExpressions:true,
+    renameGlobals:false,
+    selfDefending:true,
+    simplify:true,
+    splitStrings:true,
+    splitStringsChunkLength:5,
+    stringArray:true,
+    stringArrayEncoding:['rc4'],
+    stringArrayThreshold:1,
+    transformObjectKeys:true,
+    unicodeEscapeSequence:true,
+    domainLock:domainLockArray
+  });
+
+  return obfuscationResult.getObfuscatedCode();
+}
+
+function processHTMLorJS(input){
+  // If it looks like a full HTML document, obfuscate inline scripts only.
+  if(/<html[\s>]/i.test(input)||/<script[\s>]/i.test(input)){
+    const parser=new DOMParser();
+    const doc=parser.parseFromString(input,"text/html");
+    doc.querySelectorAll("script:not([src])").forEach(script=>{
+      const code=script.textContent.trim();
+      if(code){
+        try{script.textContent=obfuscateJavaScript(code)}
+        catch(e){throw e}
+      }
+    });
+    const msg=(document.getElementById("ownerMessage").value||"").trim();
+    const stamp=new Date().toLocaleString();
+    const meta=doc.createComment(" OBFUSCATOR PRO | Created: "+stamp+" | Message: "+msg+" ");
+    if(doc.documentElement) doc.documentElement.prepend(meta);
+    return "<!DOCTYPE html>\\n"+doc.documentElement.outerHTML;
+  }
+  return obfuscateJavaScript(input);
+}
+
+document.getElementById("obfuscateBtn").onclick=function(){
+  const input=javascriptCode.value.trim();
+  if(!input){showStatus("obStatus","আগে HTML/JavaScript code দিন।",true);return}
+  try{
+    output.value=processHTMLorJS(input);
+    document.getElementById("resultBox").classList.remove("hidden");
+    showStatus("obStatus","✅ Obfuscation সফল হয়েছে। এখন Download Obfuscated File চাপুন।");
+  }catch(e){
+    showStatus("obStatus","❌ "+e.message,true);
+  }
+};
+
+document.getElementById("copyBtn").onclick=function(){
+  navigator.clipboard.writeText(output.value).then(()=>alert("Output copied!"));
+};
+
+document.getElementById("downloadBtn").onclick=function(){
+  const blob=new Blob([output.value],{type:"text/html;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="obfuscated.html";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+
+document.getElementById("clearBtn").onclick=function(){
+  javascriptCode.value="";output.value="";
+  document.getElementById("resultBox").classList.add("hidden");
+};
+
+document.getElementById("uploadBox").onclick=()=>document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange=function(){
+  const file=this.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=()=>{javascriptCode.value=r.result;document.getElementById("fileName").textContent="Selected: "+file.name};
+  r.readAsText(file);
+};
+
+document.getElementById("tabOb").onclick=function(){
+  document.getElementById("obPanel").classList.remove("hidden");
+  document.getElementById("restorePanel").classList.add("hidden");
+  this.classList.add("active");document.getElementById("tabRestore").classList.remove("active");
+};
+document.getElementById("tabRestore").onclick=function(){
+  document.getElementById("restorePanel").classList.remove("hidden");
+  document.getElementById("obPanel").classList.add("hidden");
+  this.classList.add("active");document.getElementById("tabOb").classList.remove("active");
+};
+
+document.getElementById("restoreUpload").onclick=()=>document.getElementById("restoreFile").click();
+document.getElementById("restoreFile").onchange=function(){
+  const file=this.files[0];if(!file)return;
+  const r=new FileReader();r.onload=()=>document.getElementById("restoreInput").value=r.result;r.readAsText(file);
+};
+
+/* Restore arbitrary heavy-obfuscated JavaScript is not mathematically reversible.
+   This button therefore reports that limitation rather than pretending to recover it. */
+document.getElementById("restoreBtn").onclick=function(){
+  showStatus("restoreStatus","এই ধরনের heavy-obfuscated JavaScript থেকে original source স্বয়ংক্রিয়ভাবে 100% restore করা যায় না। Restore করার জন্য original source/package দরকার।",true);
+};
+document.getElementById("restoreClear").onclick=function(){
+  document.getElementById("restoreInput").value="";
+  document.getElementById("restorePassword").value="";
+  document.getElementById("restoreBox").classList.add("hidden");
+};
+</script>
+</body>
+</html>
